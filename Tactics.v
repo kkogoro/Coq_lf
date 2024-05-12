@@ -1,5 +1,7 @@
 (** * Tactics: More Basic Tactics *)
 
+(*Check TODO first*)
+
 (** This chapter introduces several additional proof strategies
     and tactics that allow us to begin proving more interesting
     properties of functional programs.
@@ -670,7 +672,23 @@ Proof.
 Theorem eqb_true : forall n m,
   n =? m = true -> n = m.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros n.
+  induction n as [| n' IHn'].
+  - simpl.
+    destruct m;
+    intros H.
+    + reflexivity.
+    + discriminate.
+  - destruct m.
+    + intros H.
+      simpl in H.
+      discriminate H.
+    + intros H.
+      f_equal.
+      apply IHn'.
+      simpl in H.
+      apply H.
+Qed.
 (** [] *)
 
 (** **** Exercise: 2 stars, advanced (eqb_true_informal)
@@ -679,8 +697,26 @@ Proof.
     hypothesis explicitly and being as explicit as possible about
     quantifiers, everywhere. *)
 
-(* FILL IN HERE *)
 
+(*  n =? m = true -> n = m.
+    - forall m, O =? m = true -> O = m
+      proof:  m = O (OK) | m = S(m') (discrim)
+    - forall m, n' =? m = true -> n' = m 
+                -> 
+              forall m,  S(n') =? m = true -> S(n') = m
+      proof:  m = O (discrim) | m = S(m')
+              for case : m = S(m')
+               forall m, n' =? m = true -> n' = m 
+                -> 
+                forall m', S(n') =? S(m') = true -> n' = m'
+              
+              for case : m = S(m')
+               forall m, n' =? m = true -> n' = m
+                -> 
+                forall m', n' = m' = true -> n' = m'
+              let m:=m' in H Qed.
+                
+*)
 (* Do not modify the following line: *)
 Definition manual_grade_for_informal_proof : option (nat*string) := None.
 (** [] *)
@@ -693,7 +729,27 @@ Theorem plus_n_n_injective : forall n m,
   n + n = m + m ->
   n = m.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  specialize plus_n_Sm as H.
+  intros n.
+  induction n.
+  - destruct m.
+    + simpl.
+      reflexivity.
+    + discriminate.
+  - simpl.
+    destruct m.
+    + simpl.
+      discriminate.
+    + simpl.
+      intros H2.
+      injection H2 as H2.
+      rewrite <- H in H2.
+      rewrite <- H in H2.
+      injection H2 as H2.
+      f_equal.
+      apply IHn.
+      apply H2.
+Qed.
 (** [] *)
 
 (** The strategy of doing fewer [intros] before an [induction] to
@@ -800,7 +856,22 @@ Theorem nth_error_after_last: forall (n : nat) (X : Type) (l : list X),
   length l = n ->
   nth_error l n = None.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  (*unfold length.*)
+  (*unfold nth_error.*)
+  intros n X l.
+  generalize dependent n.
+  induction l.
+  - simpl.
+    reflexivity.
+  - destruct n.
+    + simpl.
+      discriminate.
+    + simpl.
+      intros H.
+      injection H as H.
+      apply IHl.
+      apply H.
+Qed.  
 (** [] *)
 
 (* ################################################################# *)
@@ -988,7 +1059,29 @@ Theorem combine_split : forall X Y (l : list (X * Y)) l1 l2,
   split l = (l1, l2) ->
   combine l1 l2 = l.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  (*unfold combine.*)
+  intros X Y.
+  (*unfold split.*)
+  induction l as [| [x y] l' IHl'].
+  - intros l1 l2.
+    simpl.
+    intros H.
+    injection H as H1 H2.
+    rewrite <- H1.
+    simpl.
+    reflexivity.
+  - intros l1 l2.
+    simpl.
+    destruct (split l').
+    intros H.
+    injection H as H1 H2.
+    rewrite <- H1.
+    rewrite <- H2.
+    simpl.
+    f_equal.
+    apply IHl'.
+    reflexivity.
+Qed.
 (** [] *)
 
 (** The [eqn:] part of the [destruct] tactic is optional; although
@@ -1063,7 +1156,19 @@ Theorem bool_fn_applied_thrice :
   forall (f : bool -> bool) (b : bool),
   f (f (f b)) = f b.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros f b.
+  destruct (f(true)) eqn:E;
+  destruct (f(false)) eqn:E2;
+  destruct b;
+  try rewrite E;
+  try rewrite E2;
+  try rewrite E;
+  try rewrite E2;
+  try rewrite E;
+  try rewrite E2;
+  reflexivity.
+Qed.
+    
 (** [] *)
 
 (* ################################################################# *)
@@ -1144,8 +1249,19 @@ Proof.
 Theorem eqb_sym : forall (n m : nat),
   (n =? m) = (m =? n).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros n.
+  induction n as [| n' IHn'].
+  - destruct m eqn: E.
+    + reflexivity.
+    + reflexivity.
+  - destruct m.
+    + reflexivity.
+    + simpl.
+      apply IHn'.
+Qed.
 (** [] *)
+
+(*TODO TODO *)
 
 (** **** Exercise: 3 stars, advanced, optional (eqb_sym_informal)
 
