@@ -1721,7 +1721,15 @@ Proof.
       contradictory and so can be solved in one step with
       [discriminate]. *)
 
-  (* FILL IN HERE *) Admitted.
+  induction contra; subst; (*这里是按照ceval构造的*)
+  (*因为使用了induction，如果没有递归构造子前提会默认丢失contra*)
+  try discriminate.
+  - (*E_WhileFalse*)
+    inversion Heqloopdef. (*代替injection*)
+    rewrite H1 in H. discriminate. 
+  - (*E_WhileTrue*)
+    apply IHcontra2. apply Heqloopdef.
+Qed.
 (** [] *)
 
 (** **** Exercise: 3 stars, standard (no_whiles_eqv)
@@ -1784,8 +1792,31 @@ Qed.
 
     Use either [no_whiles] or [no_whilesR], as you prefer. *)
 
-(* FILL IN HERE *)
-
+Theorem no_whiles_terminating: 
+  forall c, no_whilesR c -> forall st, exists st', st =[ c ]=> st'.
+  (*如果把st写到第一个forall需要一开始generlize dependent*)
+Proof.
+  intros c H.
+  induction H; subst; intros st.
+  - exists st.
+    constructor.
+  - exists (X0 !-> aeval st a; st).
+    constructor.
+    reflexivity.
+  - 
+    destruct (IHno_whilesR1 st) as [st' IH1].
+    destruct (IHno_whilesR2 st') as [st'' IH2].
+    exists st''.
+    apply E_Seq with st';
+    assumption.
+  - destruct IHno_whilesR1 with (st:=st) as [st' IH1].
+    destruct IHno_whilesR2 with (st:=st) as [st'' IH2].
+    destruct (beval st b) eqn:E. (*注意这里destruct (beval st b)*)
+    + exists st'.
+      apply E_IfTrue; assumption.
+    + exists st''.
+      apply E_IfFalse; assumption.
+Qed.
 (* Do not modify the following line: *)
 Definition manual_grade_for_no_whiles_terminating : option (nat*string) := None.
 (** [] *)
