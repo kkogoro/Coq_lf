@@ -1617,15 +1617,27 @@ Check @ceval_example2.
     which you can reverse-engineer to discover the program you should
     write.  The proof of that theorem will be somewhat lengthy. *)
 
-Definition pup_to_n : com
-  (* REPLACE THIS LINE WITH ":= _your_definition_ ." *). Admitted.
+Definition pup_to_n : com :=
+  <{ Y := 0; while X > 0 do Y := Y + X; X := X - 1 end }>.
 
 Theorem pup_to_2_ceval :
   (X !-> 2) =[
     pup_to_n
   ]=> (X !-> 0 ; Y !-> 3 ; X !-> 1 ; Y !-> 2 ; Y !-> 0 ; X !-> 2).
-Proof.
-  (* FILL IN HERE *) Admitted.
+Proof. (*REVIEW*)
+  unfold pup_to_n.
+  eapply E_Seq.
+  - apply E_Asgn.
+    simpl.
+    reflexivity.
+  - eapply E_WhileTrue; try reflexivity; try eapply E_Seq. 
+    { apply E_Asgn. simpl. unfold t_update. simpl. reflexivity. }  
+    { apply E_Asgn. simpl. reflexivity. } 
+    eapply E_WhileTrue; try reflexivity; try eapply E_Seq. 
+    { apply E_Asgn. simpl. unfold t_update. simpl. reflexivity. }  
+    { apply E_Asgn. simpl. reflexivity. } 
+    eapply E_WhileFalse. simpl. reflexivity.
+Qed.
 (** [] *)
 
 (* ================================================================= *)
@@ -1886,29 +1898,59 @@ Inductive sinstr : Type :=
 
 Fixpoint s_execute (st : state) (stack : list nat)
                    (prog : list sinstr)
-                 : list nat
-  (* REPLACE THIS LINE WITH ":= _your_definition_ ." *). Admitted.
-
+                 : list nat := 
+  match prog with
+  | [] => stack
+  | s :: l => match s with 
+              | SPush n => s_execute st (n :: stack) l
+              | SLoad x => s_execute st ((st x) :: stack) l
+              | SPlus  => match stack with 
+                          | x1 :: x2 :: lstack => (s_execute st ((x2 + x1)::lstack) l)
+                          | _ => (s_execute st stack l)
+                          end
+              | SMinus  => match stack with 
+                          | x1 :: x2 :: lstack => (s_execute st ((x2 - x1)::lstack) l)
+                          | _ => (s_execute st stack l)
+                           end
+              | SMult  => match stack with 
+                          | x1 :: x2 :: lstack => (s_execute st ((x2 * x1)::lstack) l)
+                          | _ => (s_execute st stack l)
+                          end
+              end
+  end.
 Check s_execute.
+
 
 Example s_execute1 :
      s_execute empty_st []
        [SPush 5; SPush 3; SPush 1; SMinus]
    = [2; 5].
-(* FILL IN HERE *) Admitted.
+Proof.  
+  reflexivity.
+Qed.
 
 Example s_execute2 :
      s_execute (X !-> 3) [3;4]
        [SPush 4; SLoad X; SMult; SPlus]
    = [15; 4].
-(* FILL IN HERE *) Admitted.
+Proof.  
+   reflexivity.
+ Qed.
 
 (** Next, write a function that compiles an [aexp] into a stack
     machine program. The effect of running the program should be the
     same as pushing the value of the expression on the stack. *)
 
-Fixpoint s_compile (e : aexp) : list sinstr
-  (* REPLACE THIS LINE WITH ":= _your_definition_ ." *). Admitted.
+Print aexp.
+
+Fixpoint s_compile (e : aexp) : list sinstr :=
+  match e with
+  | ANum n => [SPush n]
+  | AId x => [SLoad x]
+  | APlus a1 a2 => (s_compile a1) ++ (s_compile a2) ++ [SPlus]
+  | AMinus a1 a2 => (s_compile a1) ++ (s_compile a2) ++ [SMinus]
+  | AMult a1 a2 => (s_compile a1) ++ (s_compile a2) ++ [SMult]
+  end.
 
 (** After you've defined [s_compile], prove the following to test
     that it works. *)
@@ -1916,7 +1958,9 @@ Fixpoint s_compile (e : aexp) : list sinstr
 Example s_compile1 :
   s_compile <{ X - (2 * Y) }>
   = [SLoad X; SPush 2; SLoad Y; SMult; SMinus].
-(* FILL IN HERE *) Admitted.
+Proof.
+  reflexivity.
+Qed.
 (** [] *)
 
 (** **** Exercise: 3 stars, standard (execute_app) *)
@@ -1929,8 +1973,18 @@ Example s_compile1 :
 Theorem execute_app : forall st p1 p2 stack,
   s_execute st stack (p1 ++ p2) = s_execute st (s_execute st stack p1) p2.
 Proof.
-  (* FILL IN HERE *) Admitted.
-
+  intros st p1.
+  induction p1.
+  - simpl. reflexivity.
+  - Search ((_ :: _) ++ _) .
+    intros p2.
+    rewrite <- app_comm_cons.
+    destruct a eqn:E1; (*REVIEW 为啥不能用inversion?*)
+    destruct stack eqn:E2;
+    try (simpl; apply IHp1);
+    destruct l eqn:E3;
+    try (simpl; apply IHp1).
+Qed.
 (** [] *)
 
 (** **** Exercise: 3 stars, standard (stack_compiler_correct) *)
@@ -1943,15 +1997,28 @@ Proof.
 Lemma s_compile_correct_aux : forall st e stack,
   s_execute st stack (s_compile e) = aeval st e :: stack.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros st e.
+  generalize dependent st.  
+  induction e;
+  intros st stack;
+  try reflexivity;
+  simpl;
+  rewrite execute_app;
+  rewrite execute_app;
+  rewrite IHe1;
+  rewrite IHe2;
+  reflexivity.
+Qed.
 
 (** The main theorem should be a very easy corollary of that lemma. *)
 
 Theorem s_compile_correct : forall (st : state) (e : aexp),
   s_execute st [] (s_compile e) = [ aeval st e ].
 Proof.
-  (* FILL IN HERE *) Admitted.
-
+  intros.
+  rewrite s_compile_correct_aux.
+  reflexivity.
+Qed.
 (** [] *)
 
 (** **** Exercise: 3 stars, standard, optional (short_circuit)
@@ -1971,8 +2038,7 @@ Proof.
     would _not_ be equivalent to the original, since it would make more
     programs terminate.) *)
 
-(* FILL IN HERE
-
+(* 短路求值Compiler里做过了，懒得再写。见https://github.com/kkogoro/minic-kkogoro
     [] *)
 
 Module BreakImp.
